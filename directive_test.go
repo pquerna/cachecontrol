@@ -62,3 +62,19 @@ func TestSMaxAge(t *testing.T) {
 	cd, err = ParseResponseCacheControl("s-maxage=-1")
 	require.Error(t, err)
 }
+
+func TestReqNoCache(t *testing.T) {
+	cd, err := ParseResponseCacheControl("")
+	require.NoError(t, err)
+	require.Equal(t, cd.SMaxAge, -1)
+
+	cd, err = ParseResponseCacheControl("no-cache")
+	require.NoError(t, err)
+	require.Equal(t, cd.NoCachePresent, true)
+	require.Equal(t, len(cd.NoCache), 0)
+
+	cd, err = ParseResponseCacheControl("no-cache=MyThing")
+	require.NoError(t, err)
+	require.Equal(t, cd.NoCachePresent, true)
+	require.Equal(t, len(cd.NoCache), 1)
+}

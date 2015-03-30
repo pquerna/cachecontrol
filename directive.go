@@ -348,14 +348,14 @@ type ResponseCacheDirectives struct {
 	// listed response header fields.  That is, a shared cache MUST NOT
 	// store the specified field-names(s), whereas it MAY store the
 	// remainder of the response message.
-	Prviate FieldNames
+	Private FieldNames
 
 	// private(cast-to-bool): http://tools.ietf.org/html/rfc7234#section-5.2.2.6
 	//
 	// While the RFC defines optional field-names on a private directive,
 	// many applications only want to know if any private directives were
 	// present at all.
-	PrviatePresent bool
+	PrivatePresent bool
 
 	// proxy-revalidate(bool): http://tools.ietf.org/html/rfc7234#section-5.2.2.7
 	//
@@ -415,9 +415,9 @@ func (cd *ResponseCacheDirectives) addToken(token string) error {
 	case "public":
 		cd.Public = true
 	case "private":
-		cd.PrviatePresent = true
+		cd.PrivatePresent = true
 	case "proxy-revalidate":
-		cd.PrviatePresent = true
+		cd.ProxyRevalidate = true
 	case "max-age":
 		err = ErrMaxAgeDeltaSeconds
 	case "s-maxage":
@@ -437,6 +437,9 @@ func (cd *ResponseCacheDirectives) addPair(token string, v string) error {
 	case "no-cache":
 		cd.NoCachePresent = true
 		tokens := strings.Split(v, ",")
+		if cd.NoCache == nil {
+			cd.NoCache = make(FieldNames)
+		}
 		for _, t := range tokens {
 			k := http.CanonicalHeaderKey(textproto.TrimString(t))
 			cd.NoCache[k] = true
@@ -448,11 +451,14 @@ func (cd *ResponseCacheDirectives) addPair(token string, v string) error {
 	case "public":
 		err = ErrPublicNoArgs
 	case "private":
-		cd.PrviatePresent = true
+		cd.PrivatePresent = true
 		tokens := strings.Split(v, ",")
+		if cd.Private == nil {
+			cd.Private = make(FieldNames)
+		}
 		for _, t := range tokens {
 			k := http.CanonicalHeaderKey(textproto.TrimString(t))
-			cd.Prviate[k] = true
+			cd.Private[k] = true
 		}
 	case "proxy-revalidate":
 		err = ErrProxyRevalidateNoArgs
