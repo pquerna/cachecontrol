@@ -71,4 +71,10 @@ func TestResponseWriterPrivate(t *testing.T) {
 	require.Len(t, reasons, 1)
 	require.Equal(t, reasons[0], ReasonResponsePrivate)
 	require.Equal(t, time.Time{}, expires)
+
+	opts.PrivateCache = true
+	reasons, expires, err = CachableResponse(req, res, opts)
+	require.NoError(t, err)
+	require.Len(t, reasons, 0)
+	require.Equal(t, time.Time{}, expires)
 }
