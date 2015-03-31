@@ -30,7 +30,7 @@ type Options struct {
 
 // Given an HTTP Request, the future Status Code, and an ResponseWriter,
 // determine the possible reasons a response SHOULD NOT be cached.
-func CachableResponse(req *http.Request,
+func CachableResponseWriter(req *http.Request,
 	statusCode int,
 	resp http.ResponseWriter,
 	opts Options) ([]Reason, time.Time, error) {
@@ -39,7 +39,7 @@ func CachableResponse(req *http.Request,
 
 // Given an HTTP Request and Response, determine the possible reasons a response SHOULD NOT
 // be cached.
-func Cachable(req *http.Request,
+func CachableResponse(req *http.Request,
 	resp *http.Response,
 	opts Options) ([]Reason, time.Time, error) {
 	return usingRequestResponse(req, resp.StatusCode, resp.Header, opts)
