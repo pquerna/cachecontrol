@@ -19,6 +19,7 @@ package cachecontrol
 
 import (
 	"net/http"
+	"time"
 )
 
 type Reason int
@@ -47,18 +48,21 @@ type Options struct {
 	PrivateCache bool
 }
 
-func calcReasons(req *http.Request, statusCode int, respHeaders http.Header, opts Options) ([]Reason, error) {
+func calcReasons(req *http.Request,
+	statusCode int,
+	respHeaders http.Header, opts Options) ([]Reason, time.Time, error) {
 	var rv []Reason
+	var expiresTime time.Time
 
 	respDir, err := ParseResponseCacheControl(respHeaders.Get("Cache-Control"))
 	if err != nil {
-		return nil, err
+		return nil, expiresTime, err
 	}
 
 	if req != nil {
 		reqDir, err := ParseRequestCacheControl(req.Header.Get("Cache-Control"))
 		if err != nil {
-			return nil, err
+			return nil, expiresTime, err
 		}
 
 		switch req.Method {
@@ -161,18 +165,68 @@ func calcReasons(req *http.Request, statusCode int, respHeaders http.Header, opt
 		rv = append(rv, ReasonResponseUncachableByDefault)
 	}
 
-	return rv, nil
+	/**
+	 * Okay, lets calculate Freshness/Expiration now. woo:
+	 *  http://tools.ietf.org/html/rfc7234#section-4.2
+	 */
+
+	/*
+	   o  If the cache is shared and the s-maxage response directive
+	      (Section 5.2.2.9) is present, use its value, or
+
+	   o  If the max-age response directive (Section 5.2.2.8) is present,
+	      use its value, or
+
+	   o  If the Expires response header field (Section 5.3) is present, use
+	      its value minus the value of the Date response header field, or
+
+	   o  Otherwise, no explicit expiration time is present in the response.
+	      A heuristic freshness lifetime might be applicable; see
+	      Section 4.2.2.
+	*/
+
+	if respDir.SMaxAge != -1 && !opts.PrivateCache {
+		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(respDir.SMaxAge))
+	} else if respDir.MaxAge != -1 {
+		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(respDir.MaxAge))
+	} else if expires {
+		expiresIn, err := http.ParseTime(respHeaders.Get("Expires"))
+		if err != err {
+			return nil, expiresTime, err
+		}
+		serverDate, err := http.ParseTime(respHeaders.Get("Date"))
+
+		// We ignore any errors from this, and use our own time by default,
+		// most likely this is a ResponseWriter with the Date header not set yet
+		// :(
+		if err != nil {
+			serverDate = time.Now()
+		}
+
+		serverDate = serverDate.UTC()
+		expiresIn = expiresIn.UTC()
+		expiresTime = time.Now().UTC().Add(serverDate.Sub(expiresIn))
+	} else {
+		// heuristic freshness lifetime
+	}
+
+	return rv, expiresTime, nil
 }
 
 // Given an HTTP Request, the future Status Code, and an ResponseWriter,
 // determine the possible reasons a response SHOULD NOT be cached.
-func CachableResponse(req *http.Request, statusCode int, resp http.ResponseWriter, opts Options) ([]Reason, error) {
+func CachableResponse(req *http.Request,
+	statusCode int,
+	resp http.ResponseWriter,
+	opts Options) ([]Reason, time.Time, error) {
 	return calcReasons(req, statusCode, resp.Header(), opts)
 }
 
 // Given an HTTP Request and Response, determine the possible reasons a response SHOULD NOT
 // be cached.
-func Cachable(req *http.Request, resp *http.Response, opts Options) ([]Reason, error) {
+func Cachable(req *http.Request,
+	resp *http.Response,
+	opts Options) ([]Reason, time.Time, error) {
 	return calcReasons(req, resp.StatusCode, resp.Header, opts)
 }
 
