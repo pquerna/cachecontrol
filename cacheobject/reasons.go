@@ -15,7 +15,7 @@
  *
  */
 
-package cachecontrol
+package cacheobject
 
 // Repersents a potential Reason to not cache an object.
 //

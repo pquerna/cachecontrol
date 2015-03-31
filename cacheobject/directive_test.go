@@ -15,7 +15,7 @@
  *
  */
 
-package cachecontrol
+package cacheobject
 
 import (
 	"github.com/stretchr/testify/require"

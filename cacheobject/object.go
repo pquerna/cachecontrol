@@ -15,7 +15,7 @@
  *
  */
 
-package cachecontrol
+package cacheobject
 
 import (
 	"net/http"
@@ -199,17 +199,17 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 		expiresTime = time.Now().UTC().Add(serverDate.Sub(obj.RespExpiresHeader))
 	} else {
 		// heuristic freshness lifetime
-		// Last-Modified
 
 	}
 
 	rv.OutExpirationTime = expiresTime
 }
 
-func usingRequestResponse(req *http.Request,
+// Evaluate cachability based on an HTTP request, and parts of the respose.
+func UsingRequestResponse(req *http.Request,
 	statusCode int,
 	respHeaders http.Header,
-	opts Options) ([]Reason, time.Time, error) {
+	privateCache bool) ([]Reason, time.Time, error) {
 
 	var reqHeaders http.Header
 	var reqMethod string
@@ -258,7 +258,7 @@ func usingRequestResponse(req *http.Request,
 	}
 
 	obj := Object{
-		CacheIsPrivate: opts.PrivateCache,
+		CacheIsPrivate: privateCache,
 
 		RespDirectives:         respDir,
 		RespHeaders:            respHeaders,

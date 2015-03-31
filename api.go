@@ -18,6 +18,8 @@
 package cachecontrol
 
 import (
+	"github.com/pquerna/cachecontrol/cacheobject"
+
 	"net/http"
 	"time"
 )
@@ -33,14 +35,14 @@ type Options struct {
 func CachableResponseWriter(req *http.Request,
 	statusCode int,
 	resp http.ResponseWriter,
-	opts Options) ([]Reason, time.Time, error) {
-	return usingRequestResponse(req, statusCode, resp.Header(), opts)
+	opts Options) ([]cacheobject.Reason, time.Time, error) {
+	return cacheobject.UsingRequestResponse(req, statusCode, resp.Header(), opts.PrivateCache)
 }
 
 // Given an HTTP Request and Response, determine the possible reasons a response SHOULD NOT
 // be cached.
 func CachableResponse(req *http.Request,
 	resp *http.Response,
-	opts Options) ([]Reason, time.Time, error) {
-	return usingRequestResponse(req, resp.StatusCode, resp.Header, opts)
+	opts Options) ([]cacheobject.Reason, time.Time, error) {
+	return cacheobject.UsingRequestResponse(req, resp.StatusCode, resp.Header, opts.PrivateCache)
 }
