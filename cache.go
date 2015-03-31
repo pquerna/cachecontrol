@@ -37,6 +37,8 @@ const (
 
 	ReasonResponseNoStore
 	ReasonResponsePrivate
+
+	ReasonResponseUncachableByDefault
 )
 
 type Options struct {
@@ -45,27 +47,10 @@ type Options struct {
 	PrivateCache bool
 }
 
-// calculate if a freshness directive is present: http://tools.ietf.org/html/rfc7234#section-4.2.1
-func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, resp *http.Response, opts Options) bool {
-	if !opts.PrivateCache && respDir.SMaxAge != -1 {
-		return true
-	}
-
-	if respDir.MaxAge != -1 {
-		return true
-	}
-
-	if resp.Header.Get("Expires") != "" {
-		return true
-	}
-
-	return false
-}
-
-func Cachable(req *http.Request, resp *http.Response, opts Options) ([]Reason, error) {
+func calcReasons(req *http.Request, statusCode int, respHeaders http.Header, opts Options) ([]Reason, error) {
 	var rv []Reason
 
-	respDir, err := ParseResponseCacheControl(resp.Header.Get("Cache-Control"))
+	respDir, err := ParseResponseCacheControl(respHeaders.Get("Cache-Control"))
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +79,7 @@ func Cachable(req *http.Request, resp *http.Response, opts Options) ([]Reason, e
 			  Content-Location header field that has the same value as the POST's
 			  effective request URI (Section 3.1.4.2).
 			*/
-			if !hasFreshness(reqDir, respDir, resp, opts) {
+			if !hasFreshness(reqDir, respDir, respHeaders, opts) {
 				rv = append(rv, ReasonRequestMethodPOST)
 			}
 
@@ -144,7 +129,103 @@ func Cachable(req *http.Request, resp *http.Response, opts Options) ([]Reason, e
 		rv = append(rv, ReasonResponseNoStore)
 	}
 
-	// TODO(pquerna): response status code & the response either clauses.
+	/*
+	   the response either:
+
+	         *  contains an Expires header field (see Section 5.3), or
+
+	         *  contains a max-age response directive (see Section 5.2.2.8), or
+
+	         *  contains a s-maxage response directive (see Section 5.2.2.9)
+	            and the cache is shared, or
+
+	         *  contains a Cache Control Extension (see Section 5.2.3) that
+	            allows it to be cached, or
+
+	         *  has a status code that is defined as cacheable by default (see
+	            Section 4.2.2), or
+
+	         *  contains a public response directive (see Section 5.2.2.5).
+	*/
+
+	expires := respHeaders.Get("Expires") != ""
+	statusCachable := cachableStatusCode(statusCode)
+
+	if expires ||
+		respDir.MaxAge != -1 ||
+		(respDir.SMaxAge != -1 && !opts.PrivateCache) ||
+		statusCachable ||
+		respDir.Public {
+		/* cachable by default, at least one of the above conditions was true */
+	} else {
+		rv = append(rv, ReasonResponseUncachableByDefault)
+	}
 
 	return rv, nil
+}
+
+// Given an HTTP Request, the future Status Code, and an ResponseWriter,
+// determine the possible reasons a response SHOULD NOT be cached.
+func CachableResponse(req *http.Request, statusCode int, resp http.ResponseWriter, opts Options) ([]Reason, error) {
+	return calcReasons(req, statusCode, resp.Header(), opts)
+}
+
+// Given an HTTP Request and Response, determine the possible reasons a response SHOULD NOT
+// be cached.
+func Cachable(req *http.Request, resp *http.Response, opts Options) ([]Reason, error) {
+	return calcReasons(req, resp.StatusCode, resp.Header, opts)
+}
+
+// calculate if a freshness directive is present: http://tools.ietf.org/html/rfc7234#section-4.2.1
+func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, respHeaders http.Header, opts Options) bool {
+	if !opts.PrivateCache && respDir.SMaxAge != -1 {
+		return true
+	}
+
+	if respDir.MaxAge != -1 {
+		return true
+	}
+
+	if respHeaders.Get("Expires") != "" {
+		return true
+	}
+
+	return false
+}
+
+func cachableStatusCode(statusCode int) bool {
+	/*
+		Responses with status codes that are defined as cacheable by default
+		(e.g., 200, 203, 204, 206, 300, 301, 404, 405, 410, 414, and 501 in
+		this specification) can be reused by a cache with heuristic
+		expiration unless otherwise indicated by the method definition or
+		explicit cache controls [RFC7234]; all other status codes are not
+		cacheable by default.
+	*/
+	switch statusCode {
+	case 200:
+		return true
+	case 203:
+		return true
+	case 204:
+		return true
+	case 206:
+		return true
+	case 300:
+		return true
+	case 301:
+		return true
+	case 404:
+		return true
+	case 405:
+		return true
+	case 410:
+		return true
+	case 414:
+		return true
+	case 501:
+		return true
+	default:
+		return false
+	}
 }
