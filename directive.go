@@ -26,18 +26,22 @@ import (
 	"strings"
 )
 
-var ErrQuoteMismatch = errors.New("Missing closing quote")
-var ErrMaxAgeDeltaSeconds = errors.New("Failed to parse delta-seconds in `max-age`")
-var ErrSMaxAgeDeltaSeconds = errors.New("Failed to parse delta-seconds in `s-maxage`")
-var ErrMaxStaleDeltaSeconds = errors.New("Failed to parse delta-seconds in `min-fresh`")
-var ErrMinFreshDeltaSeconds = errors.New("Failed to parse delta-seconds in `min-fresh`")
-var ErrNoCacheNoArgs = errors.New("Unexpected argument to `no-cache`")
-var ErrNoStoreNoArgs = errors.New("Unexpected argument to `no-store`")
-var ErrNoTransformNoArgs = errors.New("Unexpected argument to `no-transform`")
-var ErrOnlyIfCachedNoArgs = errors.New("Unexpected argument to `only-if-cached`")
-var ErrMustRevalidateNoArgs = errors.New("Unexpected argument to `must-revalidate`")
-var ErrPublicNoArgs = errors.New("Unexpected argument to `public`")
-var ErrProxyRevalidateNoArgs = errors.New("Unexpected argument to `proxy-revalidate`")
+// TODO(pquerna): add extensions from here: http://www.iana.org/assignments/http-cache-directives/http-cache-directives.xhtml
+
+var (
+	ErrQuoteMismatch         = errors.New("Missing closing quote")
+	ErrMaxAgeDeltaSeconds    = errors.New("Failed to parse delta-seconds in `max-age`")
+	ErrSMaxAgeDeltaSeconds   = errors.New("Failed to parse delta-seconds in `s-maxage`")
+	ErrMaxStaleDeltaSeconds  = errors.New("Failed to parse delta-seconds in `min-fresh`")
+	ErrMinFreshDeltaSeconds  = errors.New("Failed to parse delta-seconds in `min-fresh`")
+	ErrNoCacheNoArgs         = errors.New("Unexpected argument to `no-cache`")
+	ErrNoStoreNoArgs         = errors.New("Unexpected argument to `no-store`")
+	ErrNoTransformNoArgs     = errors.New("Unexpected argument to `no-transform`")
+	ErrOnlyIfCachedNoArgs    = errors.New("Unexpected argument to `only-if-cached`")
+	ErrMustRevalidateNoArgs  = errors.New("Unexpected argument to `must-revalidate`")
+	ErrPublicNoArgs          = errors.New("Unexpected argument to `public`")
+	ErrProxyRevalidateNoArgs = errors.New("Unexpected argument to `proxy-revalidate`")
+)
 
 func whitespace(b byte) bool {
 	if b == '\t' || b == ' ' {
