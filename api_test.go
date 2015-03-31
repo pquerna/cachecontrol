@@ -18,6 +18,7 @@
 package cachecontrol
 
 import (
+	"github.com/pquerna/cachecontrol/cacheobject"
 	"github.com/stretchr/testify/require"
 
 	"fmt"
@@ -69,7 +70,7 @@ func TestResponseWriterPrivate(t *testing.T) {
 	reasons, expires, err := CachableResponse(req, res, opts)
 	require.NoError(t, err)
 	require.Len(t, reasons, 1)
-	require.Equal(t, reasons[0], ReasonResponsePrivate)
+	require.Equal(t, reasons[0], cacheobject.ReasonResponsePrivate)
 	require.Equal(t, time.Time{}, expires)
 
 	opts.PrivateCache = true
