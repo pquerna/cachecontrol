@@ -22,32 +22,6 @@ import (
 	"time"
 )
 
-type Warning int
-
-const (
-	WarningSomething Warning = iota
-)
-
-type Reason int
-
-const (
-	ReasonRequestMethodPOST Reason = iota
-	ReasonRequestMethodPUT
-	ReasonRequestMethodDELETE
-	ReasonRequestMethodCONNECT
-	ReasonRequestMethodOPTIONS
-	ReasonRequestMethodTRACE
-	ReasonRequestMethodUnkown
-
-	ReasonRequestNoStore
-	ReasonRequestAuthorizationHeader
-
-	ReasonResponseNoStore
-	ReasonResponsePrivate
-
-	ReasonResponseUncachableByDefault
-)
-
 // LOW LEVEL API: Repersents a potentially cachable HTTP object.
 //
 // This struct is designed to be serialized efficiently, so in a high
@@ -56,17 +30,21 @@ const (
 type Object struct {
 	CacheIsPrivate bool
 
-	RespDirectives    *ResponseCacheDirectives
-	RespHeaders       http.Header
-	RespStatusCode    int
-	RespExpiresHeader time.Time
-	RespDateHeader    time.Time
+	RespDirectives         *ResponseCacheDirectives
+	RespHeaders            http.Header
+	RespStatusCode         int
+	RespExpiresHeader      time.Time
+	RespDateHeader         time.Time
+	RespLastModifiedHeader time.Time
 
 	ReqDirectives *RequestCacheDirectives
 	ReqHeaders    http.Header
 	ReqMethod     string
 }
 
+// LOW LEVEL API: Repersents the results of examinig an Object with
+// CachableObject and ExpirationObject.
+//
 // TODO(pquerna): decide if this is a good idea or bad
 type ObjectResults struct {
 	OutReasons        []Reason
@@ -221,6 +199,8 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 		expiresTime = time.Now().UTC().Add(serverDate.Sub(obj.RespExpiresHeader))
 	} else {
 		// heuristic freshness lifetime
+		// Last-Modified
+
 	}
 
 	rv.OutExpirationTime = expiresTime
@@ -251,6 +231,8 @@ func usingRequestResponse(req *http.Request,
 
 	var expiresHeader time.Time
 	var dateHeader time.Time
+	var lastModifiedHeader time.Time
+
 	if respHeaders.Get("Expires") != "" {
 		expiresHeader, err = http.ParseTime(respHeaders.Get("Expires"))
 		if err != err {
@@ -267,14 +249,23 @@ func usingRequestResponse(req *http.Request,
 		dateHeader = dateHeader.UTC()
 	}
 
+	if respHeaders.Get("Last-Modified") != "" {
+		lastModifiedHeader, err = http.ParseTime(respHeaders.Get("Last-Modified"))
+		if err != err {
+			return nil, time.Time{}, err
+		}
+		lastModifiedHeader = lastModifiedHeader.UTC()
+	}
+
 	obj := Object{
 		CacheIsPrivate: opts.PrivateCache,
 
-		RespDirectives:    respDir,
-		RespHeaders:       respHeaders,
-		RespStatusCode:    statusCode,
-		RespExpiresHeader: expiresHeader,
-		RespDateHeader:    dateHeader,
+		RespDirectives:         respDir,
+		RespHeaders:            respHeaders,
+		RespStatusCode:         statusCode,
+		RespExpiresHeader:      expiresHeader,
+		RespDateHeader:         dateHeader,
+		RespLastModifiedHeader: lastModifiedHeader,
 
 		ReqDirectives: reqDir,
 		ReqHeaders:    reqHeaders,
@@ -283,6 +274,11 @@ func usingRequestResponse(req *http.Request,
 	rv := ObjectResults{}
 
 	CachableObject(&obj, &rv)
+	if rv.OutErr != nil {
+		return nil, time.Time{}, rv.OutErr
+	}
+
+	ExpirationObject(&obj, &rv)
 	if rv.OutErr != nil {
 		return nil, time.Time{}, rv.OutErr
 	}
