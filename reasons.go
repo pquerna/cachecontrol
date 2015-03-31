@@ -22,6 +22,12 @@ import (
 	"time"
 )
 
+type Warning int
+
+const (
+	WarningSomething Warning = iota
+)
+
 type Reason int
 
 const (
@@ -42,129 +48,143 @@ const (
 	ReasonResponseUncachableByDefault
 )
 
-type Options struct {
-	// Set to True for a prviate cache, which is not shared amoung users (eg, in a browser)
-	// Set to False for a "shared" cache, which is more common in a server context.
-	PrivateCache bool
+// LOW LEVEL API: Repersents a potentially cachable HTTP object.
+//
+// This struct is designed to be serialized efficiently, so in a high
+// performance caching server, things like Date-Strings don't need to be
+// parsed for every use of a cached object.
+type Object struct {
+	CacheIsPrivate bool
+
+	RespDirectives    *ResponseCacheDirectives
+	RespHeaders       http.Header
+	RespStatusCode    int
+	RespExpiresHeader time.Time
+	RespDateHeader    time.Time
+
+	ReqDirectives *RequestCacheDirectives
+	ReqHeaders    http.Header
+	ReqMethod     string
 }
 
-func calcReasons(req *http.Request,
-	statusCode int,
-	respHeaders http.Header, opts Options) ([]Reason, time.Time, error) {
-	var rv []Reason
-	var expiresTime time.Time
+// TODO(pquerna): decide if this is a good idea or bad
+type ObjectResults struct {
+	OutReasons        []Reason
+	OutWarnings       []Warning
+	OutExpirationTime time.Time
+	OutErr            error
+}
 
-	respDir, err := ParseResponseCacheControl(respHeaders.Get("Cache-Control"))
-	if err != nil {
-		return nil, expiresTime, err
+// LOW LEVEL API: Check if a object is cachable.
+func CachableObject(obj *Object, rv *ObjectResults) {
+	rv.OutReasons = nil
+	rv.OutWarnings = nil
+	rv.OutErr = nil
+
+	switch obj.ReqMethod {
+	case "GET":
+		break
+	case "HEAD":
+		break
+	case "POST":
+		/**
+		  POST: http://tools.ietf.org/html/rfc7231#section-4.3.3
+
+		  Responses to POST requests are only cacheable when they include
+		  explicit freshness information (see Section 4.2.1 of [RFC7234]).
+		  However, POST caching is not widely implemented.  For cases where an
+		  origin server wishes the client to be able to cache the result of a
+		  POST in a way that can be reused by a later GET, the origin server
+		  MAY send a 200 (OK) response containing the result and a
+		  Content-Location header field that has the same value as the POST's
+		  effective request URI (Section 3.1.4.2).
+		*/
+		if !hasFreshness(obj.ReqDirectives, obj.RespDirectives, obj.RespHeaders, obj.CacheIsPrivate) {
+			rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodPOST)
+		}
+
+	case "PUT":
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodPUT)
+
+	case "DELETE":
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodDELETE)
+
+	case "CONNECT":
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodCONNECT)
+
+	case "OPTIONS":
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodOPTIONS)
+
+	case "TRACE":
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodTRACE)
+
+	// HTTP Extension Methods: http://www.iana.org/assignments/http-methods/http-methods.xhtml
+	//
+	// To my knowledge, none of them are cachable. Please open a ticket if this is not the case!
+	//
+	default:
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodUnkown)
 	}
 
-	if req != nil {
-		reqDir, err := ParseRequestCacheControl(req.Header.Get("Cache-Control"))
-		if err != nil {
-			return nil, expiresTime, err
-		}
+	if obj.ReqDirectives.NoStore {
+		rv.OutReasons = append(rv.OutReasons, ReasonRequestNoStore)
+	}
 
-		switch req.Method {
-		case "GET":
-			break
-		case "HEAD":
-			break
-		case "POST":
-			/**
-			  POST: http://tools.ietf.org/html/rfc7231#section-4.3.3
-
-			  Responses to POST requests are only cacheable when they include
-			  explicit freshness information (see Section 4.2.1 of [RFC7234]).
-			  However, POST caching is not widely implemented.  For cases where an
-			  origin server wishes the client to be able to cache the result of a
-			  POST in a way that can be reused by a later GET, the origin server
-			  MAY send a 200 (OK) response containing the result and a
-			  Content-Location header field that has the same value as the POST's
-			  effective request URI (Section 3.1.4.2).
-			*/
-			if !hasFreshness(reqDir, respDir, respHeaders, opts) {
-				rv = append(rv, ReasonRequestMethodPOST)
-			}
-
-		case "PUT":
-			rv = append(rv, ReasonRequestMethodPUT)
-
-		case "DELETE":
-			rv = append(rv, ReasonRequestMethodDELETE)
-
-		case "CONNECT":
-			rv = append(rv, ReasonRequestMethodCONNECT)
-
-		case "OPTIONS":
-			rv = append(rv, ReasonRequestMethodOPTIONS)
-
-		case "TRACE":
-			rv = append(rv, ReasonRequestMethodTRACE)
-
-		// HTTP Extension Methods: http://www.iana.org/assignments/http-methods/http-methods.xhtml
-		//
-		// To my knowledge, none of them are cachable. Please open a ticket if this is not the case!
-		//
-		default:
-			rv = append(rv, ReasonRequestMethodUnkown)
-		}
-
-		if reqDir.NoStore {
-			rv = append(rv, ReasonRequestNoStore)
-		}
-
-		// Storing Responses to Authenticated Requests: http://tools.ietf.org/html/rfc7234#section-3.2
-		authz := req.Header.Get("Authorization")
-		if authz != "" {
-			if respDir.MustRevalidate || respDir.Public || respDir.SMaxAge != -1 {
-				// Expires of some kind present, this is potentially OK.
-			} else {
-				rv = append(rv, ReasonRequestAuthorizationHeader)
-			}
+	// Storing Responses to Authenticated Requests: http://tools.ietf.org/html/rfc7234#section-3.2
+	authz := obj.ReqHeaders.Get("Authorization")
+	if authz != "" {
+		if obj.RespDirectives.MustRevalidate ||
+			obj.RespDirectives.Public ||
+			obj.RespDirectives.SMaxAge != -1 {
+			// Expires of some kind present, this is potentially OK.
+		} else {
+			rv.OutReasons = append(rv.OutReasons, ReasonRequestAuthorizationHeader)
 		}
 	}
 
-	if respDir.PrivatePresent && !opts.PrivateCache {
-		rv = append(rv, ReasonResponsePrivate)
+	if obj.RespDirectives.PrivatePresent && !obj.CacheIsPrivate {
+		rv.OutReasons = append(rv.OutReasons, ReasonResponsePrivate)
 	}
 
-	if respDir.NoStore {
-		rv = append(rv, ReasonResponseNoStore)
+	if obj.RespDirectives.NoStore {
+		rv.OutReasons = append(rv.OutReasons, ReasonResponseNoStore)
 	}
 
 	/*
 	   the response either:
 
-	         *  contains an Expires header field (see Section 5.3), or
+	     *  contains an Expires header field (see Section 5.3), or
 
-	         *  contains a max-age response directive (see Section 5.2.2.8), or
+	     *  contains a max-age response directive (see Section 5.2.2.8), or
 
-	         *  contains a s-maxage response directive (see Section 5.2.2.9)
-	            and the cache is shared, or
+	     *  contains a s-maxage response directive (see Section 5.2.2.9)
+	        and the cache is shared, or
 
-	         *  contains a Cache Control Extension (see Section 5.2.3) that
-	            allows it to be cached, or
+	     *  contains a Cache Control Extension (see Section 5.2.3) that
+	        allows it to be cached, or
 
-	         *  has a status code that is defined as cacheable by default (see
-	            Section 4.2.2), or
+	     *  has a status code that is defined as cacheable by default (see
+	        Section 4.2.2), or
 
-	         *  contains a public response directive (see Section 5.2.2.5).
+	     *  contains a public response directive (see Section 5.2.2.5).
 	*/
 
-	expires := respHeaders.Get("Expires") != ""
-	statusCachable := cachableStatusCode(statusCode)
+	expires := obj.RespHeaders.Get("Expires") != ""
+	statusCachable := cachableStatusCode(obj.RespStatusCode)
 
 	if expires ||
-		respDir.MaxAge != -1 ||
-		(respDir.SMaxAge != -1 && !opts.PrivateCache) ||
+		obj.RespDirectives.MaxAge != -1 ||
+		(obj.RespDirectives.SMaxAge != -1 && !obj.CacheIsPrivate) ||
 		statusCachable ||
-		respDir.Public {
+		obj.RespDirectives.Public {
 		/* cachable by default, at least one of the above conditions was true */
 	} else {
-		rv = append(rv, ReasonResponseUncachableByDefault)
+		rv.OutReasons = append(rv.OutReasons, ReasonResponseUncachableByDefault)
 	}
+}
 
+// LOW LEVEL API: Update an objects expiration time.
+func ExpirationObject(obj *Object, rv *ObjectResults) {
 	/**
 	 * Okay, lets calculate Freshness/Expiration now. woo:
 	 *  http://tools.ietf.org/html/rfc7234#section-4.2
@@ -185,54 +205,94 @@ func calcReasons(req *http.Request,
 	      Section 4.2.2.
 	*/
 
-	if respDir.SMaxAge != -1 && !opts.PrivateCache {
-		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(respDir.SMaxAge))
-	} else if respDir.MaxAge != -1 {
-		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(respDir.MaxAge))
-	} else if expires {
-		expiresIn, err := http.ParseTime(respHeaders.Get("Expires"))
-		if err != err {
-			return nil, expiresTime, err
-		}
-		serverDate, err := http.ParseTime(respHeaders.Get("Date"))
+	var expiresTime time.Time
 
-		// We ignore any errors from this, and use our own time by default,
-		// most likely this is a ResponseWriter with the Date header not set yet
-		// :(
-		if err != nil {
-			serverDate = time.Now()
+	if obj.RespDirectives.SMaxAge != -1 && !obj.CacheIsPrivate {
+		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(obj.RespDirectives.SMaxAge))
+	} else if obj.RespDirectives.MaxAge != -1 {
+		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(obj.RespDirectives.MaxAge))
+	} else if !obj.RespExpiresHeader.IsZero() {
+		serverDate := obj.RespDateHeader
+		if serverDate.IsZero() {
+			// common enough case when a Date: header has not yet been added to an
+			// active response.
+			serverDate = time.Now().UTC()
 		}
-
-		serverDate = serverDate.UTC()
-		expiresIn = expiresIn.UTC()
-		expiresTime = time.Now().UTC().Add(serverDate.Sub(expiresIn))
+		expiresTime = time.Now().UTC().Add(serverDate.Sub(obj.RespExpiresHeader))
 	} else {
 		// heuristic freshness lifetime
 	}
 
-	return rv, expiresTime, nil
+	rv.OutExpirationTime = expiresTime
 }
 
-// Given an HTTP Request, the future Status Code, and an ResponseWriter,
-// determine the possible reasons a response SHOULD NOT be cached.
-func CachableResponse(req *http.Request,
+func usingRequestResponse(req *http.Request,
 	statusCode int,
-	resp http.ResponseWriter,
+	respHeaders http.Header,
 	opts Options) ([]Reason, time.Time, error) {
-	return calcReasons(req, statusCode, resp.Header(), opts)
-}
 
-// Given an HTTP Request and Response, determine the possible reasons a response SHOULD NOT
-// be cached.
-func Cachable(req *http.Request,
-	resp *http.Response,
-	opts Options) ([]Reason, time.Time, error) {
-	return calcReasons(req, resp.StatusCode, resp.Header, opts)
+	var reqHeaders http.Header
+	var reqMethod string
+
+	var reqDir *RequestCacheDirectives = nil
+	respDir, err := ParseResponseCacheControl(respHeaders.Get("Cache-Control"))
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	if req != nil {
+		reqDir, err = ParseRequestCacheControl(req.Header.Get("Cache-Control"))
+		if err != nil {
+			return nil, time.Time{}, err
+		}
+		reqHeaders = req.Header
+		reqMethod = req.Method
+	}
+
+	var expiresHeader time.Time
+	var dateHeader time.Time
+	if respHeaders.Get("Expires") != "" {
+		expiresHeader, err = http.ParseTime(respHeaders.Get("Expires"))
+		if err != err {
+			return nil, time.Time{}, err
+		}
+		expiresHeader = expiresHeader.UTC()
+	}
+
+	if respHeaders.Get("Date") != "" {
+		dateHeader, err = http.ParseTime(respHeaders.Get("Date"))
+		if err != err {
+			return nil, time.Time{}, err
+		}
+		dateHeader = dateHeader.UTC()
+	}
+
+	obj := Object{
+		CacheIsPrivate: opts.PrivateCache,
+
+		RespDirectives:    respDir,
+		RespHeaders:       respHeaders,
+		RespStatusCode:    statusCode,
+		RespExpiresHeader: expiresHeader,
+		RespDateHeader:    dateHeader,
+
+		ReqDirectives: reqDir,
+		ReqHeaders:    reqHeaders,
+		ReqMethod:     reqMethod,
+	}
+	rv := ObjectResults{}
+
+	CachableObject(&obj, &rv)
+	if rv.OutErr != nil {
+		return nil, time.Time{}, rv.OutErr
+	}
+
+	return rv.OutReasons, rv.OutExpirationTime, nil
 }
 
 // calculate if a freshness directive is present: http://tools.ietf.org/html/rfc7234#section-4.2.1
-func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, respHeaders http.Header, opts Options) bool {
-	if !opts.PrivateCache && respDir.SMaxAge != -1 {
+func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, respHeaders http.Header, privateCache bool) bool {
+	if !privateCache && respDir.SMaxAge != -1 {
 		return true
 	}
 

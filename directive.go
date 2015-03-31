@@ -151,7 +151,7 @@ type cacheDirective interface {
 	addPair(s string, v string) error
 }
 
-// Low level repersentation of possible request directives in a `Cache-Control` header: http://tools.ietf.org/html/rfc7234#section-5.2.1
+// LOW LEVEL API: Repersentation of possible request directives in a `Cache-Control` header: http://tools.ietf.org/html/rfc7234#section-5.2.1
 //
 // Note: Many fields will be `nil` in practice.
 //
@@ -271,6 +271,7 @@ func (cd *RequestCacheDirectives) addPair(token string, v string) error {
 	return err
 }
 
+// LOW LEVEL API: Parses a Cache Control Header from a Request into a set of directives.
 func ParseRequestCacheControl(value string) (*RequestCacheDirectives, error) {
 	cd := &RequestCacheDirectives{
 		MaxAge:   -1,
@@ -285,7 +286,7 @@ func ParseRequestCacheControl(value string) (*RequestCacheDirectives, error) {
 	return cd, nil
 }
 
-// Low level repersentation of possible response directives in a `Cache-Control` header: http://tools.ietf.org/html/rfc7234#section-5.2.2
+// LOW LEVEL API: Repersentation of possible response directives in a `Cache-Control` header: http://tools.ietf.org/html/rfc7234#section-5.2.2
 //
 // Note: Many fields will be `nil` in practice.
 //
@@ -392,6 +393,7 @@ type ResponseCacheDirectives struct {
 	Extensions []string
 }
 
+// LOW LEVEL API: Parses a Cache Control Header from a Response into a set of directives.
 func ParseResponseCacheControl(value string) (*ResponseCacheDirectives, error) {
 	cd := &ResponseCacheDirectives{
 		MaxAge:  -1,
