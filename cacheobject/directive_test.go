@@ -85,6 +85,12 @@ func TestResSpaceOnly(t *testing.T) {
 	require.Equal(t, cd.SMaxAge, -1)
 }
 
+func TestResTabOnly(t *testing.T) {
+	cd, err := ParseResponseCacheControl("\t")
+	require.NoError(t, err)
+	require.Equal(t, cd.SMaxAge, -1)
+}
+
 func TestResPrivateExtensionQuoted(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`private="Set-Cookie,Request-Id" public`)
 	require.NoError(t, err)
@@ -116,7 +122,7 @@ func TestResMultipleNoCacheTabExtension(t *testing.T) {
 	require.Equal(t, cd.NoCache["Mything"], true)
 }
 
-func TestReqExtensionsEmptyQuote(t *testing.T) {
+func TestResExtensionsEmptyQuote(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`foo="" bar="hi"`)
 	require.NoError(t, err)
 	require.Equal(t, cd.SMaxAge, -1)
@@ -125,9 +131,23 @@ func TestReqExtensionsEmptyQuote(t *testing.T) {
 	require.Contains(t, cd.Extensions, "foo=")
 }
 
-func TestReqQuoteMismatch(t *testing.T) {
+func TestResQuoteMismatch(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`foo="`)
 	require.Error(t, err)
 	require.Nil(t, cd)
 	require.Equal(t, err, ErrQuoteMismatch)
+}
+
+func TestResProxyRevalidateNoArgs(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`proxy-revalidate=23432`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrProxyRevalidateNoArgs)
+}
+
+func TestResPublicNoArgs(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`public=Vary`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrPublicNoArgs)
 }
