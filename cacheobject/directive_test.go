@@ -22,6 +22,7 @@ import (
 
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 )
 
@@ -296,4 +297,76 @@ func TestReqOnlyIfCachedNoArgs(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, cd)
 	require.Equal(t, err, ErrOnlyIfCachedNoArgs)
+}
+
+func TestReqMaxAge(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`max-age=99999`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MaxAge, 99999)
+	require.Equal(t, cd.MaxStale, -1)
+}
+
+func TestReqMaxStale(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`max-stale=99999`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MaxStale, 99999)
+	require.Equal(t, cd.MaxAge, -1)
+	require.Equal(t, cd.MinFresh, -1)
+}
+
+func TestReqMaxAgeBroken(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`max-age`)
+	require.Error(t, err)
+	require.Equal(t, ErrMaxAgeDeltaSeconds, err)
+	require.Nil(t, cd)
+}
+
+func TestReqMaxStaleBroken(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`max-stale`)
+	require.Error(t, err)
+	require.Equal(t, ErrMaxStaleDeltaSeconds, err)
+	require.Nil(t, cd)
+}
+
+func TestReqMinFresh(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh=99999`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MinFresh, 99999)
+	require.Equal(t, cd.MaxAge, -1)
+	require.Equal(t, cd.MaxStale, -1)
+}
+
+func TestReqMinFreshBroken(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh`)
+	require.Error(t, err)
+	require.Equal(t, ErrMinFreshDeltaSeconds, err)
+	require.Nil(t, cd)
+}
+
+func TestReqMinFreshJumk(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh=a99a`)
+	require.Error(t, err)
+	// need a struct cast in require... nothing exists?
+	// require.Implements(t, (*strconv.NumError)(nil), err)
+	if numError, ok := err.(*strconv.NumError); ok {
+		require.Equal(t, strconv.ErrSyntax, numError.Err)
+	} else {
+		require.True(t, ok, "Error was not a *strconv.NumError")
+	}
+	require.Nil(t, cd)
+}
+
+func TestReqExtensions(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh=99999 foobar=1 cats`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MinFresh, 99999)
+	require.Equal(t, cd.MaxAge, -1)
+	require.Equal(t, cd.MaxStale, -1)
+	require.Len(t, cd.Extensions, 2)
+	require.Contains(t, cd.Extensions, "foobar=1")
+	require.Contains(t, cd.Extensions, "cats")
 }
