@@ -101,7 +101,7 @@ func parse(value string, cd cacheDirective) error {
 			} else {
 				z := k
 				for z < len(value) {
-					if !isToken(value[z]) {
+					if whitespace(value[z]) {
 						break
 					}
 					z++

@@ -85,12 +85,35 @@ func TestResSpaceOnly(t *testing.T) {
 	require.Equal(t, cd.SMaxAge, -1)
 }
 
+func TestResPrivateExtensionQuoted(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`private="Set-Cookie,Request-Id" public`)
+	require.NoError(t, err)
+	require.Equal(t, cd.Public, true)
+	require.Equal(t, cd.PrivatePresent, true)
+	require.Equal(t, len(cd.Private), 2)
+	require.Equal(t, len(cd.Extensions), 0)
+	require.Equal(t, cd.Private["Set-Cookie"], true)
+	require.Equal(t, cd.Private["Request-Id"], true)
+}
+
+func TestResPrivateExtension(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`private=Set-Cookie,Request-Id public`)
+	require.NoError(t, err)
+	require.Equal(t, cd.Public, true)
+	require.Equal(t, cd.PrivatePresent, true)
+	require.Equal(t, len(cd.Private), 2)
+	require.Equal(t, len(cd.Extensions), 0)
+	require.Equal(t, cd.Private["Set-Cookie"], true)
+	require.Equal(t, cd.Private["Request-Id"], true)
+}
+
 func TestResMultipleNoCacheTabExtension(t *testing.T) {
 	cd, err := ParseResponseCacheControl("no-cache " + "\t" + "no-cache=Mything aasdfdsfa")
 	require.NoError(t, err)
 	require.Equal(t, cd.NoCachePresent, true)
 	require.Equal(t, len(cd.NoCache), 1)
 	require.Equal(t, len(cd.Extensions), 1)
+	require.Equal(t, cd.NoCache["Mything"], true)
 }
 
 func TestReqExtensionsEmptyQuote(t *testing.T) {
