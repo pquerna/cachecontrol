@@ -138,6 +138,27 @@ func TestResQuoteMismatch(t *testing.T) {
 	require.Equal(t, err, ErrQuoteMismatch)
 }
 
+func TestResMustRevalidateNoArgs(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`must-revalidate=234`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrMustRevalidateNoArgs)
+}
+
+func TestResNoTransformNoArgs(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-transform="xxx"`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrNoTransformNoArgs)
+}
+
+func TestResNoStoreNoArgs(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-store=""`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrNoStoreNoArgs)
+}
+
 func TestResProxyRevalidateNoArgs(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`proxy-revalidate=23432`)
 	require.Error(t, err)
