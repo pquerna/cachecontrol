@@ -49,6 +49,8 @@ func TestResponseWriterPublic(t *testing.T) {
 	req, res := roundTrip(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public")
+		w.Header().Set("Last-Modified",
+			time.Now().UTC().Add(time.Duration(time.Hour*-5)).Format(http.TimeFormat))
 		fmt.Fprintln(w, `{}`)
 	})
 
@@ -56,7 +58,10 @@ func TestResponseWriterPublic(t *testing.T) {
 	reasons, expires, err := CachableResponse(req, res, opts)
 	require.NoError(t, err)
 	require.Len(t, reasons, 0)
-	require.Equal(t, time.Time{}, expires)
+	require.WithinDuration(t,
+		time.Now().UTC().Add(time.Duration(float64(time.Hour)*0.5)),
+		expires,
+		10*time.Second)
 }
 
 func TestResponseWriterPrivate(t *testing.T) {

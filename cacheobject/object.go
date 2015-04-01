@@ -165,6 +165,8 @@ func CachableObject(obj *Object, rv *ObjectResults) {
 
 var twentyFourHours = time.Duration(24 * time.Hour)
 
+const debug = false
+
 // LOW LEVEL API: Update an objects expiration time.
 func ExpirationObject(obj *Object, rv *ObjectResults) {
 	/**
@@ -212,13 +214,25 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 		// expiry-period = MIN(time-since-last-modified-date * factor, 24 hours)
 		//
 		// obj.NowUTC
+
 		since := obj.RespLastModifiedHeader.Sub(obj.NowUTC)
 		since = time.Duration(float64(since) * -0.1)
+
 		if since > twentyFourHours {
 			expiresTime = obj.NowUTC.Add(twentyFourHours)
 		} else {
 			expiresTime = obj.NowUTC.Add(since)
 		}
+
+		if debug {
+			println("Now UTC: ", obj.NowUTC.String())
+			println("Last-Modified: ", obj.RespLastModifiedHeader.String())
+			println("Since: ", since.String())
+			println("TwentyFourHours: ", twentyFourHours.String())
+			println("Expiration: ", expiresTime.String())
+		}
+	} else {
+		// TODO(pquerna): what should the default behavoir be for expiration time?
 	}
 
 	rv.OutExpirationTime = expiresTime
@@ -254,7 +268,7 @@ func UsingRequestResponse(req *http.Request,
 
 	if respHeaders.Get("Expires") != "" {
 		expiresHeader, err = http.ParseTime(respHeaders.Get("Expires"))
-		if err != err {
+		if err != nil {
 			return nil, time.Time{}, err
 		}
 		expiresHeader = expiresHeader.UTC()
@@ -262,7 +276,7 @@ func UsingRequestResponse(req *http.Request,
 
 	if respHeaders.Get("Date") != "" {
 		dateHeader, err = http.ParseTime(respHeaders.Get("Date"))
-		if err != err {
+		if err != nil {
 			return nil, time.Time{}, err
 		}
 		dateHeader = dateHeader.UTC()
@@ -270,7 +284,7 @@ func UsingRequestResponse(req *http.Request,
 
 	if respHeaders.Get("Last-Modified") != "" {
 		lastModifiedHeader, err = http.ParseTime(respHeaders.Get("Last-Modified"))
-		if err != err {
+		if err != nil {
 			return nil, time.Time{}, err
 		}
 		lastModifiedHeader = lastModifiedHeader.UTC()
