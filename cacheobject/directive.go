@@ -87,6 +87,7 @@ func parse(value string, cd cacheDirective) error {
 					return ErrQuoteMismatch
 				}
 				i = k + eaten
+
 				err = cd.addPair(token, result)
 			} else {
 				z := k
@@ -97,10 +98,18 @@ func parse(value string, cd cacheDirective) error {
 					z++
 				}
 				i = z
-				err = cd.addPair(token, value[k:z])
+
+				result := value[k:z]
+				if result[len(result)-1] == ',' {
+					result = result[:len(result)-1]
+				}
+
+				err = cd.addPair(token, result)
 			}
 		} else {
-			err = cd.addToken(token)
+			if token != "," {
+				err = cd.addToken(token)
+			}
 			i = j
 		}
 	}

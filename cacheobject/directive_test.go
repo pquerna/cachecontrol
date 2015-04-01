@@ -104,6 +104,34 @@ func TestResPrivateExtensionQuoted(t *testing.T) {
 	require.Equal(t, cd.Private["Request-Id"], true)
 }
 
+func TestResCommaFollowingBare(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`public, max-age=500`)
+	require.NoError(t, err)
+	require.Equal(t, cd.Public, true)
+	require.Equal(t, cd.MaxAge, 500)
+	require.Equal(t, cd.PrivatePresent, false)
+	require.Equal(t, len(cd.Extensions), 0)
+}
+
+func TestResCommaFollowingKV(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`max-age=500, public`)
+	require.NoError(t, err)
+	require.Equal(t, cd.Public, true)
+	require.Equal(t, cd.MaxAge, 500)
+	require.Equal(t, cd.PrivatePresent, false)
+	require.Equal(t, len(cd.Extensions), 0)
+}
+
+func TestResPrivateTrailingComma(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`private=Set-Cookie, public`)
+	require.NoError(t, err)
+	require.Equal(t, cd.Public, true)
+	require.Equal(t, cd.PrivatePresent, true)
+	require.Equal(t, len(cd.Private), 1)
+	require.Equal(t, len(cd.Extensions), 0)
+	require.Equal(t, cd.Private["Set-Cookie"], true)
+}
+
 func TestResPrivateExtension(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`private=Set-Cookie,Request-Id public`)
 	require.NoError(t, err)
@@ -240,4 +268,32 @@ func TestParseDeltaSecondsNegative(t *testing.T) {
 	ds, err := parseDeltaSeconds("-60")
 	require.Error(t, err)
 	require.Equal(t, DeltaSeconds(-1), ds)
+}
+
+func TestReqNoCacheNoArgs(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`no-cache=234`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrNoCacheNoArgs)
+}
+
+func TestReqNoStoreNoArgs(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`no-store=,,x`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrNoStoreNoArgs)
+}
+
+func TestReqNoTransformNoArgs(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`no-transform=akx`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrNoTransformNoArgs)
+}
+
+func TestReqOnlyIfCachedNoArgs(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`only-if-cached=no-store`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrOnlyIfCachedNoArgs)
 }
