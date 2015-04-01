@@ -37,7 +37,7 @@ func main() {
 
 ## Can I use this in a high performance caching server?
 
-`cachecontrol` is divided into two packages: `cachecontrol` with a high level API, and a lower level `cacheobject` package.  Use `[Object](https://godoc.org/github.com/pquerna/cachecontrol/cacheobject#Object)` in a high performance use case where you have previously parsed headers containing dates or would like to avoid memory allocations.
+`cachecontrol` is divided into two packages: `cachecontrol` with a high level API, and a lower level `cacheobject` package.  Use [Object](https://godoc.org/github.com/pquerna/cachecontrol/cacheobject#Object) in a high performance use case where you have previously parsed headers containing dates or would like to avoid memory allocations.
 
 ```go
 package main
