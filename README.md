@@ -9,6 +9,10 @@
 
 # Usage
 
+`cachecontrol.CachableResponse` returns an array of [reasons](https://godoc.org/github.com/pquerna/cachecontrol/cacheobject#Reason) why a response should not be cached and when it expires.  In the case that `len(reasons) == 0`, the response is cachable according to the RFC.  However, some people want non-compliant caches for various business use cases, so each reason is specifically named, so if your cache wants to cache `POST` requests, it can easily do that, but still be RFC compliant in other situations.
+
+# Examples
+
 ## Can you cache Example.com?
 
 ```go
@@ -89,6 +93,16 @@ func main() {
 }
 ```
 
-# License
+## Improvements, bugs, adding features, and taking cachecontrol new directions!
 
-[Apache 2.0](./LICENSE)
+Please [open issues in Github](https://github.com/pquerna/cachecontrol/issues) for ideas, bugs, and general thoughts.  Pull requests are of course preferred :)
+
+# Credits
+
+`cachecontrol` has recieved significant contributions from:
+
+* [Paul Querna](https://github.com/pquerna) 
+
+## License
+
+`cachecontrol` is licensed under the [Apache License, Version 2.0](./LICENSE)
