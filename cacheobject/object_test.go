@@ -84,3 +84,30 @@ func TestCachablePOST(t *testing.T) {
 	require.NoError(t, rv.OutErr)
 	require.Len(t, rv.OutReasons, 0)
 }
+
+func TestAuthorization(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqHeaders.Set("Authorization", "bearer random")
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestAuthorizationHeader)
+}
+
+func TestCachableAuthorization(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqHeaders.Set("Authorization", "bearer random")
+	obj.RespDirectives.Public = true
+	obj.RespDirectives.MaxAge = DeltaSeconds(300)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+}
