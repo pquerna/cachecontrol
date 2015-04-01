@@ -119,9 +119,12 @@ type DeltaSeconds int32
 // http://tools.ietf.org/html/rfc7234#section-1.2.1
 func parseDeltaSeconds(v string) (DeltaSeconds, error) {
 	n, err := strconv.ParseUint(v, 10, 32)
-	if err == strconv.ErrRange {
-		return DeltaSeconds(math.MaxInt32), nil
-	} else if err != nil {
+	if err != nil {
+		if numError, ok := err.(*strconv.NumError); ok {
+			if numError.Err == strconv.ErrRange {
+				return DeltaSeconds(math.MaxInt32), nil
+			}
+		}
 		return DeltaSeconds(-1), err
 	} else {
 		if n > math.MaxInt32 {

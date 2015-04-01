@@ -20,6 +20,8 @@ package cacheobject
 import (
 	"github.com/stretchr/testify/require"
 
+	"fmt"
+	"math"
 	"testing"
 )
 
@@ -167,8 +169,75 @@ func TestResProxyRevalidateNoArgs(t *testing.T) {
 }
 
 func TestResPublicNoArgs(t *testing.T) {
-	cd, err := ParseResponseCacheControl(`public=Vary`)
+	cd, err := ParseResponseCacheControl(`public=999Vary`)
 	require.Error(t, err)
 	require.Nil(t, cd)
 	require.Equal(t, err, ErrPublicNoArgs)
+}
+
+func TestResMustRevalidate(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`must-revalidate`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MustRevalidate, true)
+}
+
+func TestResNoTransform(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-transform`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoTransform, true)
+}
+
+func TestResNoStore(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-store`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoStore, true)
+}
+
+func TestResProxyRevalidate(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`proxy-revalidate`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.ProxyRevalidate, true)
+}
+
+func TestResPublic(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`public`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.Public, true)
+}
+
+func TestResPrivate(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`private`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Len(t, cd.Private, 0)
+	require.Equal(t, cd.PrivatePresent, true)
+}
+
+func TestParseDeltaSecondsZero(t *testing.T) {
+	ds, err := parseDeltaSeconds("0")
+	require.NoError(t, err)
+	require.Equal(t, ds, 0)
+}
+
+func TestParseDeltaSecondsLarge(t *testing.T) {
+	ds, err := parseDeltaSeconds(fmt.Sprintf("%d", int64(math.MaxInt32)*2))
+	require.NoError(t, err)
+	require.Equal(t, ds, math.MaxInt32)
+}
+
+func TestParseDeltaSecondsVeryLarge(t *testing.T) {
+	ds, err := parseDeltaSeconds(fmt.Sprintf("%d", math.MaxInt64))
+	require.NoError(t, err)
+	require.Equal(t, ds, math.MaxInt32)
+}
+
+func TestParseDeltaSecondsNegative(t *testing.T) {
+	ds, err := parseDeltaSeconds("-60")
+	require.Error(t, err)
+	require.Equal(t, DeltaSeconds(-1), ds)
 }
