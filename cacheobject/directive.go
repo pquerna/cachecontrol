@@ -50,16 +50,6 @@ func whitespace(b byte) bool {
 	return false
 }
 
-// contains reports whether the string contains the byte c.
-func contains(s string, c byte) bool {
-	for i := 0; i < len(s); i++ {
-		if s[i] == c {
-			return true
-		}
-	}
-	return false
-}
-
 func parse(value string, cd cacheDirective) error {
 	var err error = nil
 	i := 0
