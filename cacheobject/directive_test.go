@@ -63,7 +63,7 @@ func TestSMaxAge(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestReqNoCache(t *testing.T) {
+func TestResNoCache(t *testing.T) {
 	cd, err := ParseResponseCacheControl("")
 	require.NoError(t, err)
 	require.Equal(t, cd.SMaxAge, -1)
@@ -77,4 +77,34 @@ func TestReqNoCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cd.NoCachePresent, true)
 	require.Equal(t, len(cd.NoCache), 1)
+}
+
+func TestResSpaceOnly(t *testing.T) {
+	cd, err := ParseResponseCacheControl(" ")
+	require.NoError(t, err)
+	require.Equal(t, cd.SMaxAge, -1)
+}
+
+func TestResMultipleNoCacheTabExtension(t *testing.T) {
+	cd, err := ParseResponseCacheControl("no-cache " + "\t" + "no-cache=Mything aasdfdsfa")
+	require.NoError(t, err)
+	require.Equal(t, cd.NoCachePresent, true)
+	require.Equal(t, len(cd.NoCache), 1)
+	require.Equal(t, len(cd.Extensions), 1)
+}
+
+func TestReqExtensionsEmptyQuote(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`foo="" bar="hi"`)
+	require.NoError(t, err)
+	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, len(cd.Extensions), 2)
+	require.Contains(t, cd.Extensions, "bar=hi")
+	require.Contains(t, cd.Extensions, "foo=")
+}
+
+func TestReqQuoteMismatch(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`foo="`)
+	require.Error(t, err)
+	require.Nil(t, cd)
+	require.Equal(t, err, ErrQuoteMismatch)
 }

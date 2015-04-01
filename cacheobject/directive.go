@@ -90,8 +90,8 @@ func parse(value string, cd cacheDirective) error {
 
 		if j+1 < len(value) && value[j] == '=' {
 			k := j + 1
-			// minimum size two bytes of ""
-			if k+1 < len(value) && value[k] == '"' {
+			// minimum size two bytes of "", but we let httpUnquote handle it.
+			if k < len(value) && value[k] == '"' {
 				eaten, result := httpUnquote(value[k:])
 				if eaten == -1 {
 					return ErrQuoteMismatch
