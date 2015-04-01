@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -32,6 +33,8 @@ func main() {
 		ReqDirectives: reqDir,
 		ReqHeaders:    req.Header,
 		ReqMethod:     req.Method,
+
+		NowUTC: time.Now().UTC(),
 	}
 	rv := cacheobject.ObjectResults{}
 

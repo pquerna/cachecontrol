@@ -40,6 +40,8 @@ type Object struct {
 	ReqDirectives *RequestCacheDirectives
 	ReqHeaders    http.Header
 	ReqMethod     string
+
+	NowUTC time.Time
 }
 
 // LOW LEVEL API: Repersents the results of examinig an Object with
@@ -161,6 +163,8 @@ func CachableObject(obj *Object, rv *ObjectResults) {
 	}
 }
 
+var twentyFourHours = time.Duration(24 * time.Hour)
+
 // LOW LEVEL API: Update an objects expiration time.
 func ExpirationObject(obj *Object, rv *ObjectResults) {
 	/**
@@ -186,26 +190,41 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 	var expiresTime time.Time
 
 	if obj.RespDirectives.SMaxAge != -1 && !obj.CacheIsPrivate {
-		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(obj.RespDirectives.SMaxAge))
+		expiresTime = obj.NowUTC.Add(time.Second * time.Duration(obj.RespDirectives.SMaxAge))
 	} else if obj.RespDirectives.MaxAge != -1 {
-		expiresTime = time.Now().UTC().Add(time.Second * time.Duration(obj.RespDirectives.MaxAge))
+		expiresTime = obj.NowUTC.UTC().Add(time.Second * time.Duration(obj.RespDirectives.MaxAge))
 	} else if !obj.RespExpiresHeader.IsZero() {
 		serverDate := obj.RespDateHeader
 		if serverDate.IsZero() {
 			// common enough case when a Date: header has not yet been added to an
 			// active response.
-			serverDate = time.Now().UTC()
+			serverDate = obj.NowUTC.UTC()
 		}
-		expiresTime = time.Now().UTC().Add(serverDate.Sub(obj.RespExpiresHeader))
-	} else {
+		expiresTime = obj.NowUTC.Add(serverDate.Sub(obj.RespExpiresHeader))
+	} else if !obj.RespLastModifiedHeader.IsZero() {
 		// heuristic freshness lifetime
+		rv.OutWarnings = append(rv.OutWarnings, WarningHeuristicExpiration)
 
+		// http://httpd.apache.org/docs/2.4/mod/mod_cache.html#cachelastmodifiedfactor
+		// CacheMaxExpire defaults to 24 hours
+		// CacheLastModifiedFactor: is 0.1
+		//
+		// expiry-period = MIN(time-since-last-modified-date * factor, 24 hours)
+		//
+		// obj.NowUTC
+		since := obj.RespLastModifiedHeader.Sub(obj.NowUTC)
+		since = time.Duration(float64(since) * -0.1)
+		if since > twentyFourHours {
+			expiresTime = obj.NowUTC.Add(twentyFourHours)
+		} else {
+			expiresTime = obj.NowUTC.Add(since)
+		}
 	}
 
 	rv.OutExpirationTime = expiresTime
 }
 
-// Evaluate cachability based on an HTTP request, and parts of the respose.
+// Evaluate cachability based on an HTTP request, and parts of the response.
 func UsingRequestResponse(req *http.Request,
 	statusCode int,
 	respHeaders http.Header,
@@ -270,6 +289,8 @@ func UsingRequestResponse(req *http.Request,
 		ReqDirectives: reqDir,
 		ReqHeaders:    reqHeaders,
 		ReqMethod:     reqMethod,
+
+		NowUTC: time.Now().UTC(),
 	}
 	rv := ObjectResults{}
 

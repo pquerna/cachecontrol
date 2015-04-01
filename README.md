@@ -74,6 +74,8 @@ func main() {
 		ReqDirectives: reqDir,
 		ReqHeaders:    req.Header,
 		ReqMethod:     req.Method,
+
+		NowUTC: time.Now().UTC(),
 	}
 	rv := cacheobject.ObjectResults{}
 
