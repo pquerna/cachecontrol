@@ -79,7 +79,7 @@ func CachableObject(obj *Object, rv *ObjectResults) {
 		  Content-Location header field that has the same value as the POST's
 		  effective request URI (Section 3.1.4.2).
 		*/
-		if !hasFreshness(obj.ReqDirectives, obj.RespDirectives, obj.RespHeaders, obj.CacheIsPrivate) {
+		if !hasFreshness(obj.ReqDirectives, obj.RespDirectives, obj.RespHeaders, obj.RespExpiresHeader, obj.CacheIsPrivate) {
 			rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodPOST)
 		}
 
@@ -322,7 +322,7 @@ func UsingRequestResponse(req *http.Request,
 }
 
 // calculate if a freshness directive is present: http://tools.ietf.org/html/rfc7234#section-4.2.1
-func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, respHeaders http.Header, privateCache bool) bool {
+func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectives, respHeaders http.Header, respExpires time.Time, privateCache bool) bool {
 	if !privateCache && respDir.SMaxAge != -1 {
 		return true
 	}
@@ -331,7 +331,7 @@ func hasFreshness(reqDir *RequestCacheDirectives, respDir *ResponseCacheDirectiv
 		return true
 	}
 
-	if respHeaders.Get("Expires") != "" {
+	if !respExpires.IsZero() || respHeaders.Get("Expires") != "" {
 		return true
 	}
 

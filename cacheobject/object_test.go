@@ -20,7 +20,9 @@ package cacheobject
 import (
 	"github.com/stretchr/testify/require"
 
+	"net/http"
 	"testing"
+	"time"
 )
 
 func TestCachableStatusCode(t *testing.T) {
@@ -33,4 +35,52 @@ func TestCachableStatusCode(t *testing.T) {
 	for _, v := range notok {
 		require.False(t, cachableStatusCode(v), "status code should not be cachable: %d", v)
 	}
+}
+
+func fill(t *testing.T, now time.Time) Object {
+	RespDirectives, err := ParseResponseCacheControl("")
+	require.NoError(t, err)
+	ReqDirectives, err := ParseRequestCacheControl("")
+	require.NoError(t, err)
+
+	obj := Object{
+		RespDirectives: RespDirectives,
+		RespHeaders:    http.Header{},
+		RespStatusCode: 200,
+		RespDateHeader: now,
+
+		ReqDirectives: ReqDirectives,
+		ReqHeaders:    http.Header{},
+		ReqMethod:     "GET",
+
+		NowUTC: now,
+	}
+
+	return obj
+}
+
+func TestNonCachablePOST(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "POST"
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestMethodPOST)
+}
+
+func TestCachablePOST(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "POST"
+	obj.RespExpiresHeader = now.Add(time.Hour * 1)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
 }
