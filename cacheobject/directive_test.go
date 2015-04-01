@@ -402,3 +402,12 @@ func TestReqLeadingComma(t *testing.T) {
 	require.Equal(t, cd.NoTransform, false)
 	require.Equal(t, cd.OnlyIfCached, false)
 }
+
+func TestReqMinFreshQuoted(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh="99999"`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.MinFresh, 99999)
+	require.Equal(t, cd.MaxAge, -1)
+	require.Equal(t, cd.MaxStale, -1)
+}
