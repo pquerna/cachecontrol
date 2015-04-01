@@ -370,3 +370,35 @@ func TestReqExtensions(t *testing.T) {
 	require.Contains(t, cd.Extensions, "foobar=1")
 	require.Contains(t, cd.Extensions, "cats")
 }
+
+func TestReqMultiple(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`no-store no-transform`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoStore, true)
+	require.Equal(t, cd.NoTransform, true)
+	require.Equal(t, cd.OnlyIfCached, false)
+	require.Len(t, cd.Extensions, 0)
+}
+
+func TestReqMultipleComma(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`no-cache,only-if-cached`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoCache, true)
+	require.Equal(t, cd.NoStore, false)
+	require.Equal(t, cd.NoTransform, false)
+	require.Equal(t, cd.OnlyIfCached, true)
+	require.Len(t, cd.Extensions, 0)
+}
+
+func TestReqLeadingComma(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`,no-cache`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Len(t, cd.Extensions, 0)
+	require.Equal(t, cd.NoCache, true)
+	require.Equal(t, cd.NoStore, false)
+	require.Equal(t, cd.NoTransform, false)
+	require.Equal(t, cd.OnlyIfCached, false)
+}

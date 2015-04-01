@@ -55,8 +55,8 @@ func parse(value string, cd cacheDirective) error {
 	i := 0
 
 	for i < len(value) && err == nil {
-		// eat leading whitespace
-		if whitespace(value[i]) {
+		// eat leading whitespace or commas
+		if whitespace(value[i]) || value[i] == ',' {
 			i++
 			continue
 		}
