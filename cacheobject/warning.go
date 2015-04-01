@@ -29,25 +29,25 @@ type Warning int
 const (
 	// Response is Stale
 	// A cache SHOULD generate this whenever the sent response is stale.
-	WarningResponseIsStale = 110
+	WarningResponseIsStale Warning = 110
 
 	// Revalidation Failed
 	// A cache SHOULD generate this when sending a stale
 	// response because an attempt to validate the response failed, due to an
 	// inability to reach the server.
-	WarningRevalidationFailed = 111
+	WarningRevalidationFailed Warning = 111
 
 	// Disconnected Operation
 	// A cache SHOULD generate this if it is intentionally disconnected from
 	// the rest of the network for a period of time.
-	WarningDisconnectedOperation = 112
+	WarningDisconnectedOperation Warning = 112
 
 	// Heuristic Expiration
 	//
 	// A cache SHOULD generate this if it heuristically chose a freshness
 	// lifetime greater than 24 hours and the response's age is greater than
 	// 24 hours.
-	WarningHeuristicExpiration = 113
+	WarningHeuristicExpiration Warning = 113
 
 	// Miscellaneous Warning
 	//
@@ -55,7 +55,7 @@ const (
 	// a human user or logged.  A system receiving this warning MUST NOT
 	// take any automated action, besides presenting the warning to the
 	// user.
-	WarningMiscellaneousWarning = 199
+	WarningMiscellaneousWarning Warning = 199
 
 	// Transformation Applied
 	//
@@ -63,14 +63,14 @@ const (
 	// transformation to the representation, such as changing the
 	// content-coding, media-type, or modifying the representation data,
 	// unless this Warning code already appears in the response.
-	WarningTransformationApplied = 214
+	WarningTransformationApplied Warning = 214
 
 	// Miscellaneous Persistent Warning
 	//
 	// The warning text can include arbitrary information to be presented to
 	// a human user or logged.  A system receiving this warning MUST NOT
 	// take any automated action.
-	WarningMiscellaneousPersistentWarning = 299
+	WarningMiscellaneousPersistentWarning Warning = 299
 )
 
 func (w Warning) HeaderString(agent string, date time.Time) string {
