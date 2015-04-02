@@ -59,6 +59,38 @@ func fill(t *testing.T, now time.Time) Object {
 	return obj
 }
 
+func TestGETPrivate(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	RespDirectives, err := ParseResponseCacheControl("private")
+	require.NoError(t, err)
+
+	obj.RespDirectives = RespDirectives
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonResponsePrivate)
+}
+
+func TestGETPrivateWithPrivateCache(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	RespDirectives, err := ParseResponseCacheControl("private")
+	require.NoError(t, err)
+
+	obj.CacheIsPrivate = true
+	obj.RespDirectives = RespDirectives
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+}
+
 func TestHEAD(t *testing.T) {
 	now := time.Now().UTC()
 
