@@ -59,6 +59,43 @@ func fill(t *testing.T, now time.Time) Object {
 	return obj
 }
 
+func TestHEAD(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "HEAD"
+	obj.RespLastModifiedHeader = now.Add(time.Hour * -1)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+
+	ExpirationObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+	require.False(t, rv.OutExpirationTime.IsZero())
+}
+
+func TestHEADLongLastModified(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "HEAD"
+	obj.RespLastModifiedHeader = now.Add(time.Hour * -70000)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+
+	ExpirationObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+	require.False(t, rv.OutExpirationTime.IsZero())
+	require.WithinDuration(t, now.Add(twentyFourHours), rv.OutExpirationTime, time.Second*60)
+}
+
 func TestNonCachablePOST(t *testing.T) {
 	now := time.Now().UTC()
 
