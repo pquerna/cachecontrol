@@ -237,3 +237,90 @@ func TestCachableAuthorization(t *testing.T) {
 	require.NoError(t, rv.OutErr)
 	require.Len(t, rv.OutReasons, 0)
 }
+
+func TestRespNoStore(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.RespDirectives.NoStore = true
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonResponseNoStore)
+}
+
+func TestReqNoStore(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqDirectives.NoStore = true
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestNoStore)
+}
+
+func TestResp500(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.RespStatusCode = 500
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonResponseUncachableByDefault)
+}
+
+func TestExpirationSMaxShared(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.RespDirectives.SMaxAge = DeltaSeconds(60)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.WithinDuration(t, now.Add(time.Second*60), rv.OutExpirationTime, time.Second*1)
+}
+
+func TestExpirationSMaxPrivate(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.CacheIsPrivate = true
+	obj.RespDirectives.SMaxAge = DeltaSeconds(60)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.True(t, rv.OutExpirationTime.IsZero())
+}
+
+func TestExpirationMax(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.RespDirectives.MaxAge = DeltaSeconds(60)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.WithinDuration(t, now.Add(time.Second*60), rv.OutExpirationTime, time.Second*1)
+}
+
+func TestExpirationMaxAndSMax(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	// cache should select the SMax age since this is a shared cache.
+	obj.RespDirectives.MaxAge = DeltaSeconds(60)
+	obj.RespDirectives.SMaxAge = DeltaSeconds(900)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.WithinDuration(t, now.Add(time.Second*900), rv.OutExpirationTime, time.Second*1)
+}
