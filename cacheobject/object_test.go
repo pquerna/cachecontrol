@@ -122,6 +122,33 @@ func TestCachablePOST(t *testing.T) {
 	require.Len(t, rv.OutReasons, 0)
 }
 
+func TestPUTs(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "PUT"
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestMethodPUT)
+}
+
+func TestPUTWithExpires(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "PUT"
+	obj.RespExpiresHeader = now.Add(time.Hour * 1)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestMethodPUT)
+}
+
 func TestAuthorization(t *testing.T) {
 	now := time.Now().UTC()
 
