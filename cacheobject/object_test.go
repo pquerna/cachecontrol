@@ -91,6 +91,36 @@ func TestGETPrivateWithPrivateCache(t *testing.T) {
 	require.Len(t, rv.OutReasons, 0)
 }
 
+func TestUncachableMethods(t *testing.T) {
+	type methodPair struct {
+		m string
+		r Reason
+	}
+
+	tc := []methodPair{
+		{"PUT", ReasonRequestMethodPUT},
+		{"DELETE", ReasonRequestMethodDELETE},
+		{"CONNECT", ReasonRequestMethodCONNECT},
+		{"OPTIONS", ReasonRequestMethodOPTIONS},
+		{"CONNECT", ReasonRequestMethodCONNECT},
+		{"TRACE", ReasonRequestMethodTRACE},
+		{"MADEUP", ReasonRequestMethodUnkown},
+	}
+
+	for _, mp := range tc {
+		now := time.Now().UTC()
+
+		obj := fill(t, now)
+		obj.ReqMethod = mp.m
+
+		rv := ObjectResults{}
+		CachableObject(&obj, &rv)
+		require.NoError(t, rv.OutErr)
+		require.Len(t, rv.OutReasons, 1)
+		require.Contains(t, rv.OutReasons, mp.r)
+	}
+}
+
 func TestHEAD(t *testing.T) {
 	now := time.Now().UTC()
 
