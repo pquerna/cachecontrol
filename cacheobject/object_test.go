@@ -171,12 +171,53 @@ func TestNonCachablePOST(t *testing.T) {
 	require.Contains(t, rv.OutReasons, ReasonRequestMethodPOST)
 }
 
-func TestCachablePOST(t *testing.T) {
+func TestCachablePOSTExpiresHeader(t *testing.T) {
 	now := time.Now().UTC()
 
 	obj := fill(t, now)
 	obj.ReqMethod = "POST"
 	obj.RespExpiresHeader = now.Add(time.Hour * 1)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+}
+
+func TestCachablePOSTSMax(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "POST"
+	obj.RespDirectives.SMaxAge = DeltaSeconds(900)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 0)
+}
+
+func TestNonCachablePOSTSMax(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "POST"
+	obj.CacheIsPrivate = true
+	obj.RespDirectives.SMaxAge = DeltaSeconds(900)
+
+	rv := ObjectResults{}
+	CachableObject(&obj, &rv)
+	require.NoError(t, rv.OutErr)
+	require.Len(t, rv.OutReasons, 1)
+	require.Contains(t, rv.OutReasons, ReasonRequestMethodPOST)
+}
+
+func TestCachablePOSTMax(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	obj.ReqMethod = "POST"
+	obj.RespDirectives.MaxAge = DeltaSeconds(9000)
 
 	rv := ObjectResults{}
 	CachableObject(&obj, &rv)
@@ -323,4 +364,31 @@ func TestExpirationMaxAndSMax(t *testing.T) {
 	ExpirationObject(&obj, &rv)
 	require.Len(t, rv.OutWarnings, 0)
 	require.WithinDuration(t, now.Add(time.Second*900), rv.OutExpirationTime, time.Second*1)
+}
+
+func TestExpirationExpires(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	// cache should select the SMax age since this is a shared cache.
+	obj.RespExpiresHeader = now.Add(time.Second * 1500)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.WithinDuration(t, now.Add(time.Second*1500), rv.OutExpirationTime, time.Second*1)
+}
+
+func TestExpirationExpiresNoServerDate(t *testing.T) {
+	now := time.Now().UTC()
+
+	obj := fill(t, now)
+	// cache should select the SMax age since this is a shared cache.
+	obj.RespDateHeader = time.Time{}
+	obj.RespExpiresHeader = now.Add(time.Second * 1500)
+
+	rv := ObjectResults{}
+	ExpirationObject(&obj, &rv)
+	require.Len(t, rv.OutWarnings, 0)
+	require.WithinDuration(t, now.Add(time.Second*1500), rv.OutExpirationTime, time.Second*1)
 }

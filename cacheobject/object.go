@@ -200,9 +200,9 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 		if serverDate.IsZero() {
 			// common enough case when a Date: header has not yet been added to an
 			// active response.
-			serverDate = obj.NowUTC.UTC()
+			serverDate = obj.NowUTC
 		}
-		expiresTime = obj.NowUTC.Add(serverDate.Sub(obj.RespExpiresHeader))
+		expiresTime = obj.NowUTC.Add(obj.RespExpiresHeader.Sub(serverDate))
 	} else if !obj.RespLastModifiedHeader.IsZero() {
 		// heuristic freshness lifetime
 		rv.OutWarnings = append(rv.OutWarnings, WarningHeuristicExpiration)
