@@ -29,18 +29,18 @@ import (
 func TestMaxAge(t *testing.T) {
 	cd, err := ParseResponseCacheControl("")
 	require.NoError(t, err)
-	require.Equal(t, cd.MaxAge, -1)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
 
 	cd, err = ParseResponseCacheControl("max-age")
 	require.Error(t, err)
 
 	cd, err = ParseResponseCacheControl("max-age=20")
 	require.NoError(t, err)
-	require.Equal(t, cd.MaxAge, 20)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(20))
 
 	cd, err = ParseResponseCacheControl("max-age=0")
 	require.NoError(t, err)
-	require.Equal(t, cd.MaxAge, 0)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(0))
 
 	cd, err = ParseResponseCacheControl("max-age=-1")
 	require.Error(t, err)
@@ -49,18 +49,18 @@ func TestMaxAge(t *testing.T) {
 func TestSMaxAge(t *testing.T) {
 	cd, err := ParseResponseCacheControl("")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 
 	cd, err = ParseResponseCacheControl("s-maxage")
 	require.Error(t, err)
 
 	cd, err = ParseResponseCacheControl("s-maxage=20")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, 20)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(20))
 
 	cd, err = ParseResponseCacheControl("s-maxage=0")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, 0)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(0))
 
 	cd, err = ParseResponseCacheControl("s-maxage=-1")
 	require.Error(t, err)
@@ -69,7 +69,7 @@ func TestSMaxAge(t *testing.T) {
 func TestResNoCache(t *testing.T) {
 	cd, err := ParseResponseCacheControl("")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 
 	cd, err = ParseResponseCacheControl("no-cache")
 	require.NoError(t, err)
@@ -85,13 +85,13 @@ func TestResNoCache(t *testing.T) {
 func TestResSpaceOnly(t *testing.T) {
 	cd, err := ParseResponseCacheControl(" ")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 }
 
 func TestResTabOnly(t *testing.T) {
 	cd, err := ParseResponseCacheControl("\t")
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 }
 
 func TestResPrivateExtensionQuoted(t *testing.T) {
@@ -109,7 +109,7 @@ func TestResCommaFollowingBare(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`public, max-age=500`)
 	require.NoError(t, err)
 	require.Equal(t, cd.Public, true)
-	require.Equal(t, cd.MaxAge, 500)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(500))
 	require.Equal(t, cd.PrivatePresent, false)
 	require.Equal(t, len(cd.Extensions), 0)
 }
@@ -118,7 +118,7 @@ func TestResCommaFollowingKV(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`max-age=500, public`)
 	require.NoError(t, err)
 	require.Equal(t, cd.Public, true)
-	require.Equal(t, cd.MaxAge, 500)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(500))
 	require.Equal(t, cd.PrivatePresent, false)
 	require.Equal(t, len(cd.Extensions), 0)
 }
@@ -156,7 +156,7 @@ func TestResMultipleNoCacheTabExtension(t *testing.T) {
 func TestResExtensionsEmptyQuote(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`foo="" bar="hi"`)
 	require.NoError(t, err)
-	require.Equal(t, cd.SMaxAge, -1)
+	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 	require.Equal(t, len(cd.Extensions), 2)
 	require.Contains(t, cd.Extensions, "bar=hi")
 	require.Contains(t, cd.Extensions, "foo=")
@@ -250,19 +250,19 @@ func TestResPrivate(t *testing.T) {
 func TestParseDeltaSecondsZero(t *testing.T) {
 	ds, err := parseDeltaSeconds("0")
 	require.NoError(t, err)
-	require.Equal(t, ds, 0)
+	require.Equal(t, ds, DeltaSeconds(0))
 }
 
 func TestParseDeltaSecondsLarge(t *testing.T) {
 	ds, err := parseDeltaSeconds(fmt.Sprintf("%d", int64(math.MaxInt32)*2))
 	require.NoError(t, err)
-	require.Equal(t, ds, math.MaxInt32)
+	require.Equal(t, ds, DeltaSeconds(math.MaxInt32))
 }
 
 func TestParseDeltaSecondsVeryLarge(t *testing.T) {
 	ds, err := parseDeltaSeconds(fmt.Sprintf("%d", math.MaxInt64))
 	require.NoError(t, err)
-	require.Equal(t, ds, math.MaxInt32)
+	require.Equal(t, ds, DeltaSeconds(math.MaxInt32))
 }
 
 func TestParseDeltaSecondsNegative(t *testing.T) {
@@ -303,17 +303,17 @@ func TestReqMaxAge(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`max-age=99999`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
-	require.Equal(t, cd.MaxAge, 99999)
-	require.Equal(t, cd.MaxStale, -1)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(99999))
+	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
 }
 
 func TestReqMaxStale(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`max-stale=99999`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
-	require.Equal(t, cd.MaxStale, 99999)
-	require.Equal(t, cd.MaxAge, -1)
-	require.Equal(t, cd.MinFresh, -1)
+	require.Equal(t, cd.MaxStale, DeltaSeconds(99999))
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
+	require.Equal(t, cd.MinFresh, DeltaSeconds(-1))
 }
 
 func TestReqMaxAgeBroken(t *testing.T) {
@@ -334,9 +334,9 @@ func TestReqMinFresh(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`min-fresh=99999`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
-	require.Equal(t, cd.MinFresh, 99999)
-	require.Equal(t, cd.MaxAge, -1)
-	require.Equal(t, cd.MaxStale, -1)
+	require.Equal(t, cd.MinFresh, DeltaSeconds(99999))
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
+	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
 }
 
 func TestReqMinFreshBroken(t *testing.T) {
@@ -363,9 +363,9 @@ func TestReqExtensions(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`min-fresh=99999 foobar=1 cats`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
-	require.Equal(t, cd.MinFresh, 99999)
-	require.Equal(t, cd.MaxAge, -1)
-	require.Equal(t, cd.MaxStale, -1)
+	require.Equal(t, cd.MinFresh, DeltaSeconds(99999))
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
+	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
 	require.Len(t, cd.Extensions, 2)
 	require.Contains(t, cd.Extensions, "foobar=1")
 	require.Contains(t, cd.Extensions, "cats")
@@ -407,7 +407,7 @@ func TestReqMinFreshQuoted(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`min-fresh="99999"`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
-	require.Equal(t, cd.MinFresh, 99999)
-	require.Equal(t, cd.MaxAge, -1)
-	require.Equal(t, cd.MaxStale, -1)
+	require.Equal(t, cd.MinFresh, DeltaSeconds(99999))
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
+	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
 }
