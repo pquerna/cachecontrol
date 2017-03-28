@@ -411,3 +411,13 @@ func TestReqMinFreshQuoted(t *testing.T) {
 	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
 	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
 }
+
+func TestNoSpacesIssue3(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-cache,no-store,max-age=0,must-revalidate`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoCachePresent, true)
+	require.Equal(t, cd.NoStore, true)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(0))
+	require.Equal(t, cd.MustRevalidate, true)
+}

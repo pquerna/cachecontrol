@@ -92,7 +92,7 @@ func parse(value string, cd cacheDirective) error {
 			} else {
 				z := k
 				for z < len(value) {
-					if whitespace(value[z]) {
+					if whitespace(value[z]) || value[z] == ',' {
 						break
 					}
 					z++
@@ -100,7 +100,7 @@ func parse(value string, cd cacheDirective) error {
 				i = z
 
 				result := value[k:z]
-				if result[len(result)-1] == ',' {
+				if result != "" && result[len(result)-1] == ',' {
 					result = result[:len(result)-1]
 				}
 
