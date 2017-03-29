@@ -421,3 +421,15 @@ func TestNoSpacesIssue3(t *testing.T) {
 	require.Equal(t, cd.MaxAge, DeltaSeconds(0))
 	require.Equal(t, cd.MustRevalidate, true)
 }
+
+func TestNoSpacesIssue3PrivateFields(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`no-cache, no-store, private=set-cookie,hello, max-age=0, must-revalidate`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.NoCachePresent, true)
+	require.Equal(t, cd.NoStore, true)
+	require.Equal(t, cd.MaxAge, DeltaSeconds(0))
+	require.Equal(t, cd.MustRevalidate, true)
+	require.Equal(t, true, cd.Private["Set-Cookie"])
+	require.Equal(t, true, cd.Private["Hello"])
+}
