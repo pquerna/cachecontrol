@@ -260,10 +260,19 @@ func (cd *RequestCacheDirectives) addPair(token string, v string) error {
 	switch token {
 	case "max-age":
 		cd.MaxAge, err = parseDeltaSeconds(v)
+		if err != nil {
+			err = ErrMaxAgeDeltaSeconds
+		}
 	case "max-stale":
 		cd.MaxStale, err = parseDeltaSeconds(v)
+		if err != nil {
+			err = ErrMaxStaleDeltaSeconds
+		}
 	case "min-fresh":
 		cd.MinFresh, err = parseDeltaSeconds(v)
+		if err != nil {
+			err = ErrMinFreshDeltaSeconds
+		}
 	case "no-cache":
 		err = ErrNoCacheNoArgs
 	case "no-store":
