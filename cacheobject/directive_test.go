@@ -22,7 +22,6 @@ import (
 
 	"fmt"
 	"math"
-	"strconv"
 	"testing"
 )
 
@@ -346,16 +345,15 @@ func TestReqMinFreshBroken(t *testing.T) {
 	require.Nil(t, cd)
 }
 
-func TestReqMinFreshJumk(t *testing.T) {
+func TestReqMinFreshJunk(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`min-fresh=a99a`)
-	require.Error(t, err)
-	// need a struct cast in require... nothing exists?
-	// require.Implements(t, (*strconv.NumError)(nil), err)
-	if numError, ok := err.(*strconv.NumError); ok {
-		require.Equal(t, strconv.ErrSyntax, numError.Err)
-	} else {
-		require.True(t, ok, "Error was not a *strconv.NumError")
-	}
+	require.Equal(t, ErrMinFreshDeltaSeconds, err)
+	require.Nil(t, cd)
+}
+
+func TestReqMinFreshBadValue(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`min-fresh=-1`)
+	require.Equal(t, ErrMinFreshDeltaSeconds, err)
 	require.Nil(t, cd)
 }
 
