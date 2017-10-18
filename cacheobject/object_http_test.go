@@ -75,3 +75,17 @@ func TestCachableResponseNoHeaders(t *testing.T) {
 	require.Len(t, reasons, 0)
 	require.True(t, expires.IsZero())
 }
+
+func TestCachableResponseBadExpires(t *testing.T) {
+	req, res := roundTrip(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "-1")
+		fmt.Fprintln(w, `{}`)
+	})
+
+	reasons, expires, err := UsingRequestResponse(req, res.StatusCode, res.Header, false)
+
+	require.NoError(t, err)
+	require.Len(t, reasons, 0)
+	require.True(t, expires.IsZero())
+}
