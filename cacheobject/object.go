@@ -106,7 +106,7 @@ func CachableObject(obj *Object, rv *ObjectResults) {
 		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodUnkown)
 	}
 
-	if obj.ReqDirectives.NoStore {
+	if obj.ReqDirectives != nil && obj.ReqDirectives.NoStore {
 		rv.OutReasons = append(rv.OutReasons, ReasonRequestNoStore)
 	}
 
