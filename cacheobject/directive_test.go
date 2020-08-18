@@ -328,7 +328,15 @@ func TestReqMaxAge(t *testing.T) {
 }
 
 func TestReqMaxStale(t *testing.T) {
-	cd, err := ParseRequestCacheControl(`max-stale=99999`)
+	cd, err := ParseRequestCacheControl(`max-stale`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.True(t, cd.MaxStaleSet)
+	require.Equal(t, cd.MaxStale, DeltaSeconds(-1))
+	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
+	require.Equal(t, cd.MinFresh, DeltaSeconds(-1))
+
+	cd, err = ParseRequestCacheControl(`max-stale=99999`)
 	require.NoError(t, err)
 	require.NotNil(t, cd)
 	require.Equal(t, cd.MaxStale, DeltaSeconds(99999))
@@ -340,13 +348,6 @@ func TestReqMaxAgeBroken(t *testing.T) {
 	cd, err := ParseRequestCacheControl(`max-age`)
 	require.Error(t, err)
 	require.Equal(t, ErrMaxAgeDeltaSeconds, err)
-	require.Nil(t, cd)
-}
-
-func TestReqMaxStaleBroken(t *testing.T) {
-	cd, err := ParseRequestCacheControl(`max-stale`)
-	require.Error(t, err)
-	require.Equal(t, ErrMaxStaleDeltaSeconds, err)
 	require.Nil(t, cd)
 }
 
