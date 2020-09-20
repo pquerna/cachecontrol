@@ -30,7 +30,7 @@ func TestMaxAge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cd.MaxAge, DeltaSeconds(-1))
 
-	cd, err = ParseResponseCacheControl("max-age")
+	_, err = ParseResponseCacheControl("max-age")
 	require.Error(t, err)
 
 	cd, err = ParseResponseCacheControl("max-age=20")
@@ -41,7 +41,7 @@ func TestMaxAge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cd.MaxAge, DeltaSeconds(0))
 
-	cd, err = ParseResponseCacheControl("max-age=-1")
+	_, err = ParseResponseCacheControl("max-age=-1")
 	require.Error(t, err)
 }
 
@@ -50,7 +50,7 @@ func TestSMaxAge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cd.SMaxAge, DeltaSeconds(-1))
 
-	cd, err = ParseResponseCacheControl("s-maxage")
+	_, err = ParseResponseCacheControl("s-maxage")
 	require.Error(t, err)
 
 	cd, err = ParseResponseCacheControl("s-maxage=20")
@@ -61,7 +61,7 @@ func TestSMaxAge(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, cd.SMaxAge, DeltaSeconds(0))
 
-	cd, err = ParseResponseCacheControl("s-maxage=-1")
+	_, err = ParseResponseCacheControl("s-maxage=-1")
 	require.Error(t, err)
 }
 
