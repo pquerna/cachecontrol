@@ -104,7 +104,7 @@ func TestUncachableMethods(t *testing.T) {
 		{"OPTIONS", ReasonRequestMethodOPTIONS},
 		{"CONNECT", ReasonRequestMethodCONNECT},
 		{"TRACE", ReasonRequestMethodTRACE},
-		{"MADEUP", ReasonRequestMethodUnkown},
+		{"MADEUP", ReasonRequestMethodUnknown},
 	}
 
 	for _, mp := range tc {
