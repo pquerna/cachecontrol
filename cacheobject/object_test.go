@@ -392,3 +392,37 @@ func TestExpirationExpiresNoServerDate(t *testing.T) {
 	require.Len(t, rv.OutWarnings, 0)
 	require.WithinDuration(t, now.Add(time.Second*1500), rv.OutExpirationTime, time.Second*1)
 }
+
+func TestCachableRequestObject(t *testing.T) {
+	ReqDirectives, err := ParseRequestCacheControl("")
+	require.NoError(t, err)
+
+	obj := Object{
+		ReqDirectives: ReqDirectives,
+		ReqHeaders:    http.Header{},
+		ReqMethod:     "GET",
+
+		NowUTC: time.Now().UTC(),
+	}
+
+	rv := ObjectResults{}
+	CachableRequestObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 0)
+
+	obj.ReqMethod = "PUT"
+	rv.OutReasons = nil
+	CachableRequestObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 1)
+}
+
+func TestCachableResponseObject(t *testing.T) {
+	obj := fill(t, time.Now().UTC())
+	obj.ReqMethod = "DELETE"
+	obj.RespDirectives.NoStore = true
+
+	rv := ObjectResults{}
+	CachableRequestObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 1)
+	CachableResponseObject(&obj, &rv)
+	require.Len(t, rv.OutReasons, 2)
+}
