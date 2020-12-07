@@ -110,7 +110,7 @@ func CachableResponseObject(obj *Object, rv *ObjectResults) {
 	  Content-Location header field that has the same value as the POST's
 	  effective request URI (Section 3.1.4.2).
 	*/
-	if obj.ReqMethod == "POST" && !hasFreshness(obj.RespDirectives, obj.RespHeaders, obj.RespExpiresHeader, obj.CacheIsPrivate) {
+	if obj.ReqMethod == http.MethodPost && !hasFreshness(obj.RespDirectives, obj.RespHeaders, obj.RespExpiresHeader, obj.CacheIsPrivate) {
 		rv.OutReasons = append(rv.OutReasons, ReasonRequestMethodPOST)
 	}
 
