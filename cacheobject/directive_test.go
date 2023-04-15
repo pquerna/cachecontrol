@@ -442,6 +442,13 @@ func TestNoSpacesIssue3(t *testing.T) {
 	require.Equal(t, cd.MustRevalidate, true)
 }
 
+func TestStaleIfError(t *testing.T) {
+	cd, err := ParseRequestCacheControl(`stale-if-error=999`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+	require.Equal(t, cd.StaleIfError, DeltaSeconds(999))
+}
+
 func TestNoSpacesIssue3PrivateFields(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`no-cache, no-store, private=set-cookie,hello, max-age=0, must-revalidate`)
 	require.NoError(t, err)
