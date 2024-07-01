@@ -481,8 +481,6 @@ func (cd *ResponseCacheDirectives) addToken(token string) error {
 		cd.Immutable = true
 	case "stale-if-error":
 		err = ErrMaxAgeDeltaSeconds
-	case "stale-while-revalidate":
-		err = ErrMaxAgeDeltaSeconds
 	default:
 		cd.Extensions = append(cd.Extensions, token)
 	}

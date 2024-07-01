@@ -18,6 +18,7 @@
 package cacheobject
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"fmt"
@@ -265,6 +266,16 @@ func TestResStaleWhileRevalidate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cd)
 	require.Equal(t, cd.StaleWhileRevalidate, DeltaSeconds(99999))
+}
+
+func TestResStaleWhileRevalidateBare(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`stale-while-revalidate`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+
+	// bare `stale-while-revalidate` is treated like an extension directive
+	require.EqualValues(t, cd.StaleWhileRevalidate, -1)
+	assert.Contains(t, cd.Extensions, "stale-while-revalidate")
 }
 
 func TestParseDeltaSecondsZero(t *testing.T) {
