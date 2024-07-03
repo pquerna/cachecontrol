@@ -261,6 +261,16 @@ func TestResStaleIfError(t *testing.T) {
 	require.Equal(t, cd.StaleIfError, DeltaSeconds(99999))
 }
 
+func TestResStaleIfErrorBare(t *testing.T) {
+	cd, err := ParseResponseCacheControl(`stale-if-error`)
+	require.NoError(t, err)
+	require.NotNil(t, cd)
+
+	// `stale-if-error` without value is treated like an extension directive
+	require.Equal(t, cd.StaleIfError, -1)
+	assert.Contains(t, cd.Extensions, "stale-if-error")
+}
+
 func TestResStaleWhileRevalidate(t *testing.T) {
 	cd, err := ParseResponseCacheControl(`stale-while-revalidate=99999`)
 	require.NoError(t, err)
