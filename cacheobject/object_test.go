@@ -393,6 +393,21 @@ func TestExpirationExpiresNoServerDate(t *testing.T) {
 	require.WithinDuration(t, now.Add(time.Second*1500), rv.OutExpirationTime, time.Second*1)
 }
 
+func TestExpirationInvalidExpiresSkipsHeuristic(t *testing.T) {
+	now := time.Now().UTC()
+
+	for _, v := range []string{"0", "-1", "not a date"} {
+		obj := fill(t, now)
+		obj.RespHeaders.Set("Expires", v)
+		obj.RespLastModifiedHeader = now.Add(time.Hour * -70000)
+
+		rv := ObjectResults{}
+		ExpirationObject(&obj, &rv)
+		require.Len(t, rv.OutWarnings, 0, "Expires: %s", v)
+		require.True(t, rv.OutExpirationTime.IsZero(), "Expires: %s gave expiration %s", v, rv.OutExpirationTime)
+	}
+}
+
 func TestCachableRequestObject(t *testing.T) {
 	ReqDirectives, err := ParseRequestCacheControl("")
 	require.NoError(t, err)

@@ -89,3 +89,21 @@ func TestCachableResponseBadExpires(t *testing.T) {
 	require.Len(t, reasons, 0)
 	require.True(t, expires.IsZero())
 }
+
+func TestCachableResponseBadExpiresWithLastModified(t *testing.T) {
+	req, res := roundTrip(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "0")
+		w.Header().Set("Last-Modified",
+			time.Now().UTC().Add(time.Duration(time.Hour*-500)).Format(http.TimeFormat))
+		fmt.Fprintln(w, `{}`)
+	})
+
+	reasons, expires, err := UsingRequestResponse(req, res.StatusCode, res.Header, false)
+
+	require.NoError(t, err)
+	require.Len(t, reasons, 0)
+	// An invalid Expires means "already expired"; it must not be replaced by
+	// the Last-Modified heuristic (which would be 24 hours here).
+	require.True(t, expires.IsZero(), "got expiration %s", expires)
+}

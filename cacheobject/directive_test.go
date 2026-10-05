@@ -267,7 +267,7 @@ func TestResStaleIfErrorBare(t *testing.T) {
 	require.NotNil(t, cd)
 
 	// `stale-if-error` without value is treated like an extension directive
-	require.Equal(t, cd.StaleIfError, -1)
+	require.Equal(t, cd.StaleIfError, DeltaSeconds(-1))
 	assert.Contains(t, cd.Extensions, "stale-if-error")
 }
 

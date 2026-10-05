@@ -214,6 +214,12 @@ func ExpirationObject(obj *Object, rv *ObjectResults) {
 			serverDate = obj.NowUTC
 		}
 		expiresTime = obj.NowUTC.Add(obj.RespExpiresHeader.Sub(serverDate))
+	} else if obj.RespHeaders.Get("Expires") != "" {
+		// An Expires header is present but could not be parsed (e.g. `0` or
+		// `-1`). RFC 7234 Section 5.3 says to treat it as already expired, so
+		// it is not a missing expiration time and must not fall through to
+		// the Last-Modified heuristic below, which could make the response
+		// fresh for up to 24 hours.
 	} else if !obj.RespLastModifiedHeader.IsZero() {
 		// heuristic freshness lifetime
 		rv.OutWarnings = append(rv.OutWarnings, WarningHeuristicExpiration)
