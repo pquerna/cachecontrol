@@ -89,3 +89,28 @@ func TestCachableResponseBadExpires(t *testing.T) {
 	require.Len(t, reasons, 0)
 	require.True(t, expires.IsZero())
 }
+
+func TestRepeatedCacheControlHTTP(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", `private="Set-Cookie, X-Private"`)
+		w.Header().Add("Cache-Control", "no-store")
+		fmt.Fprintln(w, `{}`)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	req.Header.Add("Cache-Control", "no-transform")
+	req.Header.Add("Cache-Control", "no-store")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Len(t, resp.Header.Values("Cache-Control"), 2)
+
+	reasons, _, _, obj, err := UsingRequestResponseWithObject(req, resp.StatusCode, resp.Header, false)
+	require.NoError(t, err)
+	require.Equal(t, []Reason{ReasonRequestNoStore, ReasonResponsePrivate, ReasonResponseNoStore}, reasons)
+	require.True(t, obj.ReqDirectives.NoTransform)
+	require.True(t, obj.RespDirectives.Private["Set-Cookie"])
+	require.True(t, obj.RespDirectives.Private["X-Private"])
+}

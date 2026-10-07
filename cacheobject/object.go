@@ -19,6 +19,7 @@ package cacheobject
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -268,13 +269,13 @@ func UsingRequestResponseWithObject(req *http.Request,
 	var reqMethod string
 
 	var reqDir *RequestCacheDirectives = nil
-	respDir, err := ParseResponseCacheControl(respHeaders.Get("Cache-Control"))
+	respDir, err := ParseResponseCacheControl(strings.Join(respHeaders.Values("Cache-Control"), ", "))
 	if err != nil {
 		return nil, time.Time{}, nil, nil, err
 	}
 
 	if req != nil {
-		reqDir, err = ParseRequestCacheControl(req.Header.Get("Cache-Control"))
+		reqDir, err = ParseRequestCacheControl(strings.Join(req.Header.Values("Cache-Control"), ", "))
 		if err != nil {
 			return nil, time.Time{}, nil, nil, err
 		}
